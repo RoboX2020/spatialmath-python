@@ -22,9 +22,38 @@ from spatialmath.base.transforms3d import *
 from spatialmath.base.transformsNd import isR, t2r, r2t, rt2tr
 
 import matplotlib.pyplot as plt
+from spatialmath.base.animate import Animate
 
 
 class Test3D(unittest.TestCase):
+    def test_animate_nonidentity_start(self):
+        start = transl(-1, 0, 2) @ trotz(0.4)
+        end = transl(1, 2, 1) @ trotx(0.3)
+        for style in ("line", "arrow", "rviz"):
+            fig = plt.figure()
+            try:
+                anim = Animate(dim=[-4, 4])
+                anim.trplot(end, start=start, style=style, frame="moving")
+                for pose in (start, end):
+                    anim._draw(pose)
+                    for obj in anim.displaylist:
+                        expected = pose @ obj.p if hasattr(obj, "p") else None
+                        if obj.type == "line":
+                            nt.assert_allclose(
+                                np.asarray(obj.h.get_data_3d()),
+                                expected[:3],
+                                atol=1e-14,
+                            )
+                            nt.assert_allclose(obj.p[:3, 0], np.zeros(3), atol=1e-14)
+                        elif obj.type == "arrow":
+                            nt.assert_allclose(
+                                np.asarray(obj.h._segments3d),
+                                expected[:3].T.reshape(3, 2, 3),
+                                atol=1e-14,
+                            )
+            finally:
+                plt.close(fig)
+
     @pytest.mark.skipif(
         os.environ.get("CI") == "true"
         or (sys.platform.startswith("darwin") and sys.version_info < (3, 11)),
