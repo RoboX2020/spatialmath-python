@@ -16,14 +16,7 @@ import numpy as np
 from spatialmath.base.argcheck import getvector
 from spatialmath.base.types import *
 
-try:  # pragma: no cover
-    # print('Using SymPy')
-    import sympy
-
-    _symbolics = True
-
-except ImportError:  # pragma: no cover
-    _symbolics = False
+from spatialmath.base import symbolic as sym
 
 _eps = np.finfo(np.float64).eps
 
@@ -55,8 +48,8 @@ def norm(v: ArrayLikePure) -> float:
     for x in v:
         sum += x * x
 
-    if _symbolics and isinstance(sum, sympy.Expr):
-        return sympy.sqrt(sum)
+    if sym.issymbol(sum):
+        return sym.sqrt(sum)
     else:
         return math.sqrt(sum)
 
@@ -567,13 +560,10 @@ def wrap_mpi2_pi2(theta: ArrayLike) -> Union[float, NDArray]:
 
     """
     theta = getvector(theta)
-    n = theta / np.pi * 2
-    if isinstance(n, np.ndarray):
-        n = n.astype(int)
-    else:
-        n = np.fix(n).astype(int)
-
-    y = np.where(np.bitwise_and(n, 1) == 0, theta - n * np.pi, n * np.pi - theta)
+    theta = np.fmod(theta, 2 * np.pi)
+    theta = np.where(theta > np.pi, theta - 2 * np.pi, theta)
+    theta = np.where(theta < -np.pi, theta + 2 * np.pi, theta)
+    y = np.where(np.abs(theta) <= np.pi / 2, theta, np.copysign(np.pi, theta) - theta)
     if isinstance(y, np.ndarray) and len(y) == 1:
         return float(y[0])
     else:
@@ -832,7 +822,14 @@ def project(v1: ArrayLike3, v2: ArrayLike3) -> ArrayLike3:
     :return: vector projection of v1 onto v2 (parrallel to v2)
     :rtype: ndarray(n)
     """
-    return np.dot(v1, v2) * v2
+    v1 = getvector(v1)
+    v2 = getvector(v2)
+    scale = np.max(np.abs(v2))
+    if scale == 0:
+        return np.zeros_like(v2)
+    # Normalize the scale before dot products to avoid over/underflow.
+    v2 = v2 / scale
+    return (np.dot(v1, v2) / np.dot(v2, v2)) * v2
 
 
 def orthogonalize(v1: ArrayLike3, v2: ArrayLike3, normalize: bool = True) -> ArrayLike3:
