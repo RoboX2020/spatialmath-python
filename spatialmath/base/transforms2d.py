@@ -39,15 +39,6 @@ if TYPE_CHECKING:
 
 _eps = np.finfo(np.float64).eps
 
-try:  # pragma: no cover
-    # print('Using SymPy')
-    import sympy
-
-    _symbolics = True
-
-except ImportError:  # pragma: no cover
-    _symbolics = False
-
 
 # ---------------------------------------------------------------------------------------#
 def rot2(theta: float, unit: str = "rad") -> SO2Array:
@@ -170,8 +161,13 @@ def tr2xyt(T: SE2Array, unit: str = "rad") -> R3:
     :seealso: trot2
     """
 
-    if T.dtype == "O" and _symbolics:
-        angle = sympy.atan2(T[1, 0], T[0, 0])
+    if T.dtype == "O":
+        try:
+            import sympy
+        except ImportError:
+            angle = math.atan2(T[1, 0], T[0, 0])
+        else:
+            angle = sympy.atan2(T[1, 0], T[0, 0])
     else:
         angle = math.atan2(T[1, 0], T[0, 0])
     return np.r_[T[0, 2], T[1, 2], angle]
@@ -367,7 +363,12 @@ def ishom2(T: Any, check: bool = False, tol: float = 20) -> bool:  # TypeGuard(S
         and T.shape == (3, 3)
         and (
             not check
-            or (smb.isR(T[:2, :2], tol=tol) and all(T[2, :] == np.array([0, 0, 1])))
+            or (
+                smb.isR(T[:2, :2], tol=tol)
+                and T[2, 0] == 0
+                and T[2, 1] == 0
+                and T[2, 2] == 1
+            )
         )
     )
 
@@ -1312,7 +1313,11 @@ def ICP2d(
 
         num_iter += 1
 
-    return T
+    # T accumulates roundoff error through repeated composition
+    # (T = T @ new_T) over the iterations above, and can drift just
+    # outside ishom2()'s orthonormality tolerance -- restore exact
+    # orthonormality before returning.
+    return trnorm2(T)
 
 
 if _matplotlib_exists:
