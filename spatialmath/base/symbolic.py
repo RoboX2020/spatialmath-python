@@ -293,20 +293,19 @@ def negative_one() -> Symbol:
 
 def pi() -> Symbol:
     """
-        Symbolic constant: pi
+    Symbolic constant: pi
 
-        :return: π
-        :rtype: symbolic
+    :return: π
+    :rtype: symbolic
 
-        .. runblock:: pycon
+    .. runblock:: pycon
 
-            >>> from spatialmath.base.symbolic import *
-            >>> import math
-    from typing import TYPE_CHECKING
-            >>> sin(pi())
-            >>> sin(math.pi)
+        >>> from spatialmath.base.symbolic import *
+        >>> import math
+        >>> sin(pi())
+        >>> sin(math.pi)
 
-        :seealso: :func:`sympy.S.Pi`
+    :seealso: :func:`sympy.S.Pi`
     """
     return _sympy().S.Pi
 
