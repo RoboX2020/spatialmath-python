@@ -190,17 +190,18 @@ class BasePoseList(UserList, ABC):
             # it's a numpy array
 
             shape = tuple(self.shape)
-            if len(shape) == 2 and arg.ndim == 3 and arg.shape[1:] == shape:
+            if len(shape) == 2 and arg.ndim == 3:
+                # a 3D array passed to a matrix pose class is a stack
+                if arg.shape[1:] != shape:
+                    # a stack of matrices of the wrong size is rejected,
+                    # whatever the value of check
+                    return False
                 # a stacked (N, r, c) array is a sequence of N values
                 values = [self._import(x, check=check) for x in arg]
                 if any(x is None for x in values):
                     return False
                 self.data = values
                 return True
-
-            if not check and arg.shape != shape:
-                # check=False skips the value checks, but not the shape check
-                return False
 
             x = self._import(arg, check=check)
             if x is not None:
